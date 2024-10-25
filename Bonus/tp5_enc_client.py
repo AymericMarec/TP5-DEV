@@ -13,6 +13,13 @@ def GetFirstNB(UserInput):
                 continue
             return int(UserInput[0:index-1]),index
 
+def CalculTailleBit(Nb):
+    bit = 0
+    while True:
+        bit+=1
+        if Nb < 2**bit :
+            return bit
+
 
 host = '10.33.77.14'
 port = 13337 
@@ -56,14 +63,45 @@ match Operator :
 
 FirstNBByte = str(FirstNB).encode()
 SecondNBByte = str(SecondNB).encode()
-OperatorShift = OpertorBin << 22
-Nb1SigneShift = FirstPositive << 21
-Nb2SigneShift = SecondPositive << 20
-Octet_1 = OperatorShift | Nb1SigneShift | Nb2SigneShift | int(FirstNBByte)
-print(Octet_1)
-Octet_2 = SecondNBByte
+# OperatorShift = OpertorBin << 22
 
-payload = Octet_1.to_bytes(3,byteorder='big') + int(Octet_2).to_bytes(3,byteorder='big')
-s.send(payload)
+
+BitAvailable = 6
+OctetToSend = 2
+BitToGet = CalculTailleBit(FirstNB)+CalculTailleBit(SecondNB)
+while True :
+    if BitToGet >= BitAvailable :
+        BitAvailable+=8
+        OctetToSend+=1
+    else :
+        break
+print(OctetToSend) 
+print(BitAvailable)
+
+Nb1SigneShift = FirstPositive << 2
+Nb2SigneShift = SecondPositive << 3
+TailleNb1Shift = CalculTailleBit(FirstNB) << 4
+TailleNb2Shift = CalculTailleBit(SecondNB) << 7
+if(CalculTailleBit(FirstNB)%3 == 1):
+    Toadd = CalculTailleBit(FirstNB) +2
+elif(CalculTailleBit(FirstNB)%3 == 2):
+    Toadd = CalculTailleBit(FirstNB) +1
+else :
+    Toadd = CalculTailleBit(FirstNB)
+Nb1Shift = FirstNB << 10
+Nb2Shift = SecondNB << 10 + Toadd
+infos = OpertorBin | Nb1SigneShift | Nb2SigneShift  | TailleNb1Shift | TailleNb2Shift | Nb1Shift | Nb2Shift
+print("infos : ",infos)
+print(CalculTailleBit(infos))
+print(infos.to_bytes(CalculTailleBit(infos),byteorder='big'))
+s.send(infos.to_bytes(OctetToSend,byteorder='big'))
+
+
+# Octet_1 = OpertorBin | Nb1SigneShift | Nb2SigneShift | int(FirstNBByte)
+# print(Octet_1)
+# Octet_2 = int(SecondNBByte)
+
+# payload = Octet_1.to_bytes(3,byteorder='big') + Octet_2.to_bytes(3,byteorder='big')
+# s.send(payload)
 print("Message envoyé !")
 s.close()
